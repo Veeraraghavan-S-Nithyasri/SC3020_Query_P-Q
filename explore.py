@@ -1,14 +1,13 @@
 # IMPORTING neccessary packages
 import pyscopg2
-import itertools
-import os.path
 import database
 import sqlparse
-# import re
+import os.path
+import re # Need for get_tabs() in ParseSQL
 #import json
 import os
 import pandas
-
+import itertools
 
 # Notes to self: 
 ''' To do for ParseSQL: get_attcol(), get_tabs()
@@ -45,6 +44,7 @@ class Conn:
         db_conn.close()
 
 # PARSING OF THE SQL QUERY
+
 class ParseSQL:
     # constructor
     def __init__(self, q):
@@ -55,7 +55,6 @@ class ParseSQL:
         self.toks = sqlparse.parse(self.q)[0].tokens # token keywords
 
 # UTILITY FUNCTIONS:
-
 # 1. Take the raw SQL query as input and output a clean query
 def query(self, sql_q):
     
@@ -83,16 +82,36 @@ def splitq(self):
 # 3. Retreive attribute columns
 
 def get_attcol(self):
-
+    ''' Need to do'''
 
 # 4. Get the tables
 
 def get_tabs(self):
+    
+    tabs_arr = []
+    stmt = list(sqlparse.parse(q))
+
+    for x in stmt:
+        s_type = stmt.get_type
+        if s_type != 'UNKNOWN':
+
+    ''' Need to do '''
+
+
+
+# EXTRA UTIL FNS
+
+def get_FROM(self, p_query): # used within get_tabs() and takes a parsed SQL query as argument
+    # Gets 'FROM' from query
+
+    ''' Need to do '''
+
 
 
 # EXTRACTION OF ATTRIBUTES
-'''Note: We need to create a folder called tables and store the attribute/column names
+    '''Note: We need to create a folder called tables and store the attribute/column names
     of the tables given in requirements as a text file'''
+
 class Extract:
     
     # constructor to initialize table name and table attributes
@@ -116,8 +135,11 @@ class Extract:
         # to get rid of strings that are non-allowed
         # basically non-alphanumeric cannot be there in the attributes
 
+        ''' Need to do '''
+
     def att_cols(self):
         # get the columns that are selectable
+        ''' Need to do '''
 
     def write_txt(self):
         # store into text file: 2 cases - dir exists vs doesn't exist
@@ -193,6 +215,7 @@ def query_to_queryTemplate(q):
     
     q_parsed = ParseSQL(q)
     temp = []
+    ''' Need to do'''
 
 def nested_to_temp(nested_q):
     tok = nested_q
