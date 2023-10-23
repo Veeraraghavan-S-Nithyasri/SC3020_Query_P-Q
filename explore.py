@@ -14,6 +14,8 @@ import pandas
 ''' To do for ParseSQL: get_attcol(), get_tabs()
     To do for Extract: rid_nallowed_str(), attcols()
     To do for Conversion: query_to_queryTemplate
+
+   Need to think: In the query_to_queryTemplate() - need an execution() function ???
 '''
 
 # CONNECTION TO DATABASE
