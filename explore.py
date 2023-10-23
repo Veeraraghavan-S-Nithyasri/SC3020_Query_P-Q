@@ -1,7 +1,11 @@
 # IMPORTING neccessary packages
 import pyscopg2
 import database
+
 import sqlparse
+from sqlparse.sql import IdentifierList
+from sqlparse.sql import Identifier
+
 import os.path
 import re # Need for get_tabs() in ParseSQL
 #import json
@@ -9,12 +13,17 @@ import os
 import pandas
 import itertools
 
+from sqlparse.tokens import Keyword
+from sqlparse.tokens import DML
+
 # Notes to self: 
 ''' To do for ParseSQL: get_attcol(), get_tabs()
     To do for Extract: rid_nallowed_str(), attcols()
     To do for Conversion: query_to_queryTemplate
 
    Need to think: In the query_to_queryTemplate() - need an execution() function ???
+
+   Any other util functions as needed
 '''
 
 # CONNECTION TO DATABASE
@@ -94,10 +103,30 @@ def get_tabs(self):
     for x in stmt:
         s_type = stmt.get_type
         if s_type != 'UNKNOWN':
+            from_token = self.getFROM(stmt)
 
+            # this piece of code gets the indentifiers in the table
+            for x in from_token:
+                
+                if isinstance(x, IdentifierList):
+                    for ID in x.get_identifiers():
+                        ans = ID.value.replace('"', '').lower() 
+                        yield ans
+
+                # if not an instance of IdentifierList but is of Indentifier
+                elif isinstance(x, Identifier):
+                    
+                    ans = x.ans.replace('"', '').lower() 
+                    yield ans
+            
+            tabs_arr.append(set(list(ans)))
+
+    
+
+
+
+                    
     ''' Need to do '''
-
-
 
 # EXTRA UTIL FNS
 
@@ -105,8 +134,6 @@ def get_FROM(self, p_query): # used within get_tabs() and takes a parsed SQL que
     # Gets 'FROM' from query
 
     ''' Need to do '''
-
-
 
 # EXTRACTION OF ATTRIBUTES
     '''Note: We need to create a folder called tables and store the attribute/column names
