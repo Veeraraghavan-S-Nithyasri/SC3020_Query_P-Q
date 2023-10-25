@@ -17,7 +17,7 @@ from sqlparse.tokens import Keyword
 from sqlparse.tokens import DML
 
 # Notes to self: 
-''' To do for ParseSQL: get_attcol(), get_tabs()
+''' To do for ParseSQL: get_attcol()
     To do for Extract: rid_nallowed_str(), attcols()
     To do for Conversion: query_to_queryTemplate
 
@@ -118,15 +118,18 @@ def get_tabs(self):
                     
                     ans = x.ans.replace('"', '').lower() 
                     yield ans
-            
             tabs_arr.append(set(list(ans)))
-
-    
-
-
-
-                    
-    ''' Need to do '''
+            
+            final_tabs_arr = []
+            temp = list(itertools.chain(*tabs_arr))
+            for t in temp:
+                check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(table)
+                if  check is None:
+                    tab = t.split(' ') 
+                    final_tabs_arr.append(tabs[0])
+                    # to list
+            final_tabs_arr = list(set(final_tabs_arr))
+            return final_tabs_arr                    
 
 # EXTRA UTIL FNS
 
@@ -156,7 +159,7 @@ class Extract:
         sql = sql.format(tab = self.tab)
 
         # Here need to insert code that will actually connect to db and execute the query and do extraction ???
-
+        ''' Need to do '''
     
     def rid_nallowed_strs(self):
         # to get rid of strings that are non-allowed
