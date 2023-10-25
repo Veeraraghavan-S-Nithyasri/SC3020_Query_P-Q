@@ -1,3 +1,8 @@
+''' Connection is established with DB, A query is sent to Extract which acts as a columns selector, then
+it's sent to Parse, and the parsed query is Converted to template. In the main program, we will have invocation of conn
+and a queries_list [] which will be our test queries"
+
+
 # IMPORTING neccessary packages
 import pyscopg2
 import database
