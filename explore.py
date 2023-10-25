@@ -185,7 +185,16 @@ class Extract:
         sql = sql.format(tab = self.tab)
 
         # Here need to insert code that will actually connect to db and execute the query and do extraction ???
-        ''' Need to do '''
+        con = db_conn.DBConnection()
+        ans = db_conn.execute(q)
+        con.close()
+
+        ans_arr = []
+        for att, datype in ans:
+            ans_arr.append({"column_name": att, "data_type": datype,})
+        
+        # write in the ans_arr into the attributes
+        self.atts = ans_arr
     
     def rid_nallowed_strs(self):
         # to get rid of strings that are non-allowed
