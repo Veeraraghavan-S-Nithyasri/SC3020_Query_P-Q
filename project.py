@@ -1,0 +1,2 @@
+queries_list = []
+
