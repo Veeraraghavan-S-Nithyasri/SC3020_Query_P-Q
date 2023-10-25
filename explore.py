@@ -92,6 +92,7 @@ def splitq(self):
 
 def get_attcol(self):
     ''' Need to do'''
+    
 
 # 4. Get the tables
 
@@ -131,13 +132,38 @@ def get_tabs(self):
             final_tabs_arr = list(set(final_tabs_arr))
             return final_tabs_arr                    
 
-# EXTRA UTIL FNS
+# EXTRA UTIL FN
 
-def get_FROM(self, p_query): # used within get_tabs() and takes a parsed SQL query as argument
-    # Gets 'FROM' from query
+    def get_FROM(self, p_query): # used within get_tabs() and takes a parsed SQL query as argument
+        flag_from = False
+        for x in parsed.tokens:
+            if x.is_group:
+                for t in self.get_FROM(item):
+                    yield t
+            # if a 'from' is detected
+            if flag_from:
+                if self.bool_select_nested(x): # this is to check if it's a select within a select
+                    
+                    for t in self.get_FROM(x):
+                        yield t
+                        
+                elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
+                    flag_from = False
+                    StopIteration
+                else:
+                    yield x
+            if x.ttype is Keyword and x.value.upper() == 'FROM':
+                flag_from = True
 
-    ''' Need to do '''
-
+def bool_select_nested(self, p_query): # util fn for get_FROM
+    
+        if NOT parsed.is_group:
+            return 0
+        for x in parsed.tokens:
+            if x.ttype is DML and x.value.upper() == 'SELECT':
+                return 1
+        return 0
+    
 # EXTRACTION OF ATTRIBUTES
     '''Note: We need to create a folder called tables and store the attribute/column names
     of the tables given in requirements as a text file'''
