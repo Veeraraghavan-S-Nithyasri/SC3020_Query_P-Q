@@ -276,7 +276,7 @@ class Extract:
                 for x in self.atts:
                     filehandle.write('{}\n'.format(x))
 
-    def get_attribs(self): # function that reads table and returns its attributes
+    '''def get_attribs(self): # function that reads table and returns its attributes
 
         # check if table exists - Note: Tables are stored as text files
         if os.path.isfile('tables/{}.txt'.format(self.tab)):
@@ -291,7 +291,7 @@ class Extract:
             
             self.write_txt() # store into text file
         
-        return self.attribs
+        return self.attribs'''
     
 # CONVERSION OF SQL QUERY
 
