@@ -92,7 +92,7 @@ def splitq(self):
 # 3. Retreive attribute columns
 
 def get_attcol(self):
-    ''' Need to do
+    ''' Need to do''' # this basically get all 'select'able columns
     Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
     
 
@@ -238,8 +238,18 @@ class Extract:
     
 
     def att_cols(self):
-        # get the columns that are selectable
-        ''' Need to do '''
+        
+	if os.path.isfile('tables/{}.txt'.format(self.table_name)):
+		self.atts = self.get_attribs()
+        ''' Need to do ''' # call all the util functions to do make the query clean
+	else:
+            self.dtype()
+            self.rid_nallowed_strs()
+            
+            # then we write and store into the file
+            self.write_txt()
+	# return the attribute columns
+        return self.atts
 
     def write_txt(self):
         # store into text file: 2 cases - dir exists vs doesn't exist
