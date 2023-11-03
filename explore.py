@@ -92,7 +92,8 @@ def splitq(self):
 # 3. Retreive attribute columns
 
 def get_attcol(self):
-    ''' Need to do'''
+    ''' Need to do
+    Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
     
 
 # 4. Get the tables
@@ -199,9 +200,42 @@ class Extract:
     
     def rid_nallowed_strs(self):
         # to get rid of strings that are non-allowed
-        # basically non-alphanumeric cannot be there in the attributes
+        # basically non-alphanumeric cannot be there in the attributes - this will make optimization faster
 
-        ''' Need to do '''
+        lst_of_atts = []
+
+        for att in self.atts:
+            if att['data_type'] in ['text', 'character', 'character varying']:
+        
+        # query 
+		q = """
+                    SELECT count(*)
+                    FROM {tabn}
+                    WHERE {attcoln} ~ '^.*[^A-Za-z0-9 .-].*$'
+                """.format(
+                    tabn = self.tab, 
+                    attcoln=item['']
+                )
+                
+                
+                
+                
+                
+                #actually connect to the DB to execute 
+                
+                conn = db_conn.DBConnection()
+                answer = db_conn.execute(query)
+                db_conn.close()
+
+                number = asnwer[0][0]
+                
+		if number != 0:
+                    continue
+                
+            lst_of_atts.append(att)
+
+        self.atts = lst_of_atts
+    
 
     def att_cols(self):
         # get the columns that are selectable
