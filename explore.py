@@ -125,7 +125,7 @@ def get_tabs(self):
             final_tabs_arr = []
             temp = list(itertools.chain(*tabs_arr))
             for t in temp:
-                check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(table)
+                check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(t)
                 if  check is None:
                     tab = t.split(' ') 
                     final_tabs_arr.append(tabs[0])
