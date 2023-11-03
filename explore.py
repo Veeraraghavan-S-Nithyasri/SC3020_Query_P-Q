@@ -234,7 +234,7 @@ class Extract:
                 answer = db_conn.execute(query)
                 db_conn.close()
 
-                number = asnwer[0][0]
+                number = answer[0][0]
                 
 		if number != 0:
                     continue
