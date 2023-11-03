@@ -316,7 +316,9 @@ def query_to_queryTemplate(q):
     q_parsed = ParseSQL(q)
     temp = []
     ''' Need to do'''
-
+	# basically take a sql query as input, use these functions to process different types of tokens and 
+	# handle nested queries - but how :(
+ 
 def nested_to_temp(nested_q):
     tok = nested_q
     # converts a nested query into its template
