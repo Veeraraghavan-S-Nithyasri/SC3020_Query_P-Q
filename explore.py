@@ -175,6 +175,15 @@ class Extract:
         self.tab = tab
         self.atts = None
 
+    def retreive_text_read(self):
+        cols = []
+        with open('tables/{}.txt'.format(self.table_name), 'r') as textfile:
+            for x in textfile:
+		# need to get rid of \n break
+                cursor = x[:-1]
+                cols.append(cursor)
+        return cols
+
     def dtype(self):
         # retreives the datatypes of the attributes of the relation and store as a list/dict
 
@@ -239,7 +248,7 @@ class Extract:
         
 	if os.path.isfile('tables/{}.txt'.format(self.table_name)):
 		self.atts = self.get_attribs()
-        ''' Need to do ''' # call all the util functions to do make the query clean
+         # call all the util functions to do make the query clean
 	else:
             self.dtype()
             self.rid_nallowed_strs()
@@ -271,7 +280,7 @@ class Extract:
 
         # check if table exists - Note: Tables are stored as text files
         if os.path.isfile('tables/{}.txt'.format(self.tab)):
-            self.attribs = self.read_txt() # reads the attribs from the table's txt file
+            self.attribs = self.retreive_text_read() # reads the attribs from the table's txt file
         
         # if table doesn't exist
         else:
