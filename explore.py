@@ -62,108 +62,107 @@ class ParseSQL:
         self.tabs = self.get_tabs() # get tables
         self.toks = sqlparse.parse(self.q)[0].tokens # token keywords
 
-# UTILITY FUNCTIONS:
-# 1. Take the raw SQL query as input and output a clean query
-def query(self, sql_q):
-    
-    final_q = ''
+    # UTILITY FUNCTIONS:
+    # 1. Take the raw SQL query as input and output a clean query
+    def query(self, sql_q):
+        final_q = ''
 
-    stmt = sqlparse.split(sql_q)
-    s = stmt[0]
-    parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
-    split_p_q = parsed_q.splitlines()
-    
-    for i in split_p_q:
-        final_q += ' {}'.format(i.strip())
+        stmt = sqlparse.split(sql_q)
+        s = stmt[0]
+        parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
+        split_p_q = parsed_q.splitlines()
+        
+        for i in split_p_q:
+            final_q += ' {}'.format(i.strip())
 
-    return final_q
+        return final_q
 
-# 2. Get the split
-def splitq(self):
-    stmt = sqlparse.split(self.q)
-    s = stmt[0]
-    parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
-    split_p_q = parsed_q.splitlines()
+    # 2. Get the split
+    def splitq(self):
+        stmt = sqlparse.split(self.q)
+        s = stmt[0]
+        parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
+        split_p_q = parsed_q.splitlines()
 
-    return split_p_q
+        return split_p_q
 
-# 3. Retreive attribute columns
+    # 3. Retreive attribute columns
 
-def get_attcol(self):
-    ''' Need to do''' # this basically get all 'select'able columns
-    Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
-    
+    def get_attcol(self):
+        ''' Need to do''' # this basically get all 'select'able columns
+        #Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
+        return ["Happy"]
+        
 
-# 4. Get the tables
+    # 4. Get the tables
 
-def get_tabs(self):
-    
-    tabs_arr = []
-    stmt = list(sqlparse.parse(q))
+    def get_tabs(self):
+        
+        tabs_arr = []
+        stmt = list(sqlparse.parse(q))
 
-    for x in stmt:
-        s_type = stmt.get_type
-        if s_type != 'UNKNOWN':
-            from_token = self.getFROM(stmt)
+        for x in stmt:
+            s_type = stmt.get_type
+            if s_type != 'UNKNOWN':
+                from_token = self.getFROM(stmt)
 
-            # this piece of code gets the indentifiers in the table
-            for x in from_token:
-                
-                if isinstance(x, IdentifierList):
-                    for ID in x.get_identifiers():
-                        ans = ID.value.replace('"', '').lower() 
+                # this piece of code gets the indentifiers in the table
+                for x in from_token:
+                    
+                    if isinstance(x, IdentifierList):
+                        for ID in x.get_identifiers():
+                            ans = ID.value.replace('"', '').lower() 
+                            yield ans
+
+                    # if not an instance of IdentifierList but is of Indentifier
+                    elif isinstance(x, Identifier):
+                        
+                        ans = x.ans.replace('"', '').lower() 
                         yield ans
+                tabs_arr.append(set(list(ans)))
+                
+                final_tabs_arr = []
+                temp = list(itertools.chain(*tabs_arr))
+                for t in temp:
+                    check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(t)
+                    if  check is None:
+                        tab = t.split(' ') 
+                        final_tabs_arr.append(tabs[0])
+                        # to list
+                final_tabs_arr = list(set(final_tabs_arr))
+                return final_tabs_arr                    
 
-                # if not an instance of IdentifierList but is of Indentifier
-                elif isinstance(x, Identifier):
-                    
-                    ans = x.ans.replace('"', '').lower() 
-                    yield ans
-            tabs_arr.append(set(list(ans)))
-            
-            final_tabs_arr = []
-            temp = list(itertools.chain(*tabs_arr))
-            for t in temp:
-                check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(t)
-                if  check is None:
-                    tab = t.split(' ') 
-                    final_tabs_arr.append(tabs[0])
-                    # to list
-            final_tabs_arr = list(set(final_tabs_arr))
-            return final_tabs_arr                    
+    # EXTRA UTIL FN
 
-# EXTRA UTIL FN
-
-    def get_FROM(self, p_query): # used within get_tabs() and takes a parsed SQL query as argument
-        flag_from = False
-        for x in parsed.tokens:
-            if x.is_group:
-                for t in self.get_FROM(item):
-                    yield t
-            # if a 'from' is detected
-            if flag_from:
-                if self.bool_select_nested(x): # this is to check if it's a select within a select
-                    
+        def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
+            flag_from = False
+            for x in parsed.tokens:
+                if x.is_group:
                     for t in self.get_FROM(x):
                         yield t
+                # if a 'from' is detected
+                if flag_from:
+                    if self.bool_select_nested(x): # this is to check if it's a select within a select
                         
-                elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
-                    flag_from = False
-                    StopIteration
-                else:
-                    yield x
-            if x.ttype is Keyword and x.value.upper() == 'FROM':
-                flag_from = True
+                        for t in self.get_FROM(x):
+                            yield t
+                            
+                    elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
+                        flag_from = False
+                        StopIteration
+                    else:
+                        yield x
+                if x.ttype is Keyword and x.value.upper() == 'FROM':
+                    flag_from = True
 
-def bool_select_nested(self, p_query): # util fn for get_FROM
-    
-        if NOT parsed.is_group:
+    def bool_select_nested(self, parsed): # util fn for get_FROM
+            if not parsed.is_group:
+                return 0
+            for x in parsed.tokens:
+                if x.ttype is DML and x.value.upper() == 'SELECT':
+                    return 1
             return 0
-        for x in parsed.tokens:
-            if x.ttype is DML and x.value.upper() == 'SELECT':
-                return 1
-        return 0
-    
+        
 # EXTRACTION OF ATTRIBUTES
     '''Note: We need to create a folder called tables and store the attribute/column names
     of the tables given in requirements as a text file'''
@@ -205,7 +204,7 @@ class Extract:
         # write in the ans_arr into the attributes
         self.atts = ans_arr
     
-    def rid_nallowed_strs(self):
+    '''def rid_nallowed_strs(self):
         # to get rid of strings that are non-allowed
         # basically non-alphanumeric cannot be there in the attributes - this will make optimization faster
 
@@ -215,14 +214,7 @@ class Extract:
             if att['data_type'] in ['text', 'character', 'character varying']:
         
         # query 
-		q = """
-                    SELECT count(*)
-                    FROM {tabn}
-                    WHERE {attcoln} ~ '^.*[^A-Za-z0-9 .-].*$'
-                """.format(
-                    tabn = self.tab, 
-                    attcoln=item['']
-                )
+		q = "SELECT count(*) FROM {tabn} WHERE {attcoln} ~ '^.*[^A-Za-z0-9 .-].*$'".format(tabn = self.tab, attcoln=item[''])
                 
                 
                 
@@ -276,7 +268,7 @@ class Extract:
                 for x in self.atts:
                     filehandle.write('{}\n'.format(x))
 
-    '''def get_attribs(self): # function that reads table and returns its attributes
+    def get_attribs(self): # function that reads table and returns its attributes
 
         # check if table exists - Note: Tables are stored as text files
         if os.path.isfile('tables/{}.txt'.format(self.tab)):
