@@ -326,21 +326,6 @@ def bracket(str):
             yield (arr_len, str[first + 1: x]) # returns the value
 
 # Needed in the scenario where there is a subquery
-def temp_to_nested(nested_tok):
-    # converts template to nested tokens
-    flag_brackets = False
-    q = nested_tok.value
-
-    for i in list(bracket(q)):
-        if 'select' in i[1].lower():
-            flag_bracket = True
-
-            ans = query_to_queryTemplate(i[1])
-            q = q.replace(i[1], ans)
-    # need to return the flag var as well as q
-    return flag_brackets, q 
-
-# Needed in the scenario where there is a subquery
 def query_to_queryTemplate(q):
     # converts a SQL query into its corresponding template
     
