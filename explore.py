@@ -4,8 +4,7 @@ and a queries_list [] which will be our test queries '''
 
 
 # IMPORTING neccessary packages
-import pyscopg2
-import database
+import psycopg2
 
 import sqlparse
 from sqlparse.sql import IdentifierList
@@ -20,6 +19,7 @@ import itertools
 
 from sqlparse.tokens import Keyword
 from sqlparse.tokens import DML
+import re
 
 ''' To do for ParseSQL: get_attcol()
     To do for Conversion: query_to_queryTemplate()
@@ -29,7 +29,7 @@ from sqlparse.tokens import DML
 class Conn:
     # constructor that extablishes connection to DB
     def __init__ (self, hst = '', prt = 5432, db = 'tpch', uname = '', pwd = ''): 
-        self.db_conn = pyscopg2.connect(hst = hst, prt = prt, db = db, usr = usr, pwd = pwd)
+        self.db_conn = psycopg2.connect(hst = hst, prt = prt, db = db, usr = usr, pwd = pwd)
     # PS: We need to set up the DB locally on our comps with PGAdmin with the same usrname, pwd and fill in here
     
     # for disconnection
@@ -57,7 +57,7 @@ class ParseSQL:
     # constructor
     def __init__(self, q):
         self.q = self.query(q) # clean query
-        self.sq = self.splitq(q) # split query
+        self.sq = self.splitq() # split query
         self.select_cols = self.get_attcol() # get attribute columns
         self.tabs = self.get_tabs() # get tables
         self.toks = sqlparse.parse(self.q)[0].tokens # token keywords
@@ -86,25 +86,68 @@ class ParseSQL:
 
         return split_p_q
 
+    def get_all_attribs(self, tabs):
+        ans = []
+        for tab in tabs:
+            with open(f"tables/{tab}.txt") as f:
+                cols = f.read().replace("\n", ",")
+                ans += cols.split(",")
+                f.close()
+        return [i for i in ans if i != ""]
     # 3. Retreive attribute columns
-
     def get_attcol(self):
         ''' Need to do''' # this basically get all 'select'able columns
         #Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
-        return ["Happy"]
-        
-
+        i = self.q.find("SELECT")
+        j = self.q.find("FROM")
+        cols = self.q[i+6:j].replace(" ", "")
+        cols = cols.split(",")
+        ans = []
+        for col in cols:
+            if col == '*':
+                i = self.q.find("WHERE")
+                tabs = self.q[j+4:i].replace(" ", "")
+                ans += self.get_all_attribs(tabs.split(","))
+                return ans
+            
+            elif col.find(".") < len(col):
+                ans.append(col[col.find(".")+1:])
+            else:
+                ans.append(col)
+        return ans
     # 4. Get the tables
 
     def get_tabs(self):
         
         tabs_arr = []
-        stmt = list(sqlparse.parse(q))
+        stmt = list(sqlparse.parse(self.q))
+         # EXTRA UTIL FN
+
+        def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
+            flag_from = False
+            for x in parsed.tokens:
+                if x.is_group:
+                    for t in self.get_FROM(x):
+                        yield t
+                # if a 'from' is detected
+                if flag_from:
+                    if self.bool_select_nested(x): # this is to check if it's a select within a select
+                        
+                        for t in self.get_FROM(x):
+                            yield t
+                            
+                    elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
+                        flag_from = False
+                        StopIteration
+                    else:
+                        yield x
+                if x.ttype is Keyword and x.value.upper() == 'FROM':
+                    flag_from = True
 
         for x in stmt:
             s_type = stmt.get_type
             if s_type != 'UNKNOWN':
-                from_token = self.getFROM(stmt)
+                from_token = self.get_FROM(stmt)
 
                 # this piece of code gets the indentifiers in the table
                 for x in from_token:
@@ -132,28 +175,7 @@ class ParseSQL:
                 final_tabs_arr = list(set(final_tabs_arr))
                 return final_tabs_arr                    
 
-    # EXTRA UTIL FN
-
-        def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
-            flag_from = False
-            for x in parsed.tokens:
-                if x.is_group:
-                    for t in self.get_FROM(x):
-                        yield t
-                # if a 'from' is detected
-                if flag_from:
-                    if self.bool_select_nested(x): # this is to check if it's a select within a select
-                        
-                        for t in self.get_FROM(x):
-                            yield t
-                            
-                    elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
-                        flag_from = False
-                        StopIteration
-                    else:
-                        yield x
-                if x.ttype is Keyword and x.value.upper() == 'FROM':
-                    flag_from = True
+   
 
     def bool_select_nested(self, parsed): # util fn for get_FROM
             if not parsed.is_group:
