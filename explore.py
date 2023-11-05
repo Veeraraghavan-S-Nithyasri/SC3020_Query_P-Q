@@ -91,7 +91,7 @@ def splitq(self):
 
 def get_attcol(self):
     ''' Need to do''' # this basically get all 'select'able columns
-    Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
+    '''Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it'''
     
 
 # 4. Get the tables
