@@ -67,8 +67,7 @@ class ParseSQL:
     def query(self, sql_q):
         final_q = ''
 
-        stmt = sqlparse.split(sql_q)
-        s = stmt[0]
+        stmt = sqlparse.split(sql_q)[0]
         parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
         split_p_q = parsed_q.splitlines()
         
