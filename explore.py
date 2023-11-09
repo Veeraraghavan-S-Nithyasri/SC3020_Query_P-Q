@@ -345,7 +345,8 @@ def nested_to_temp(nested_q):
         if 'select' in c.lower():
             
             buf = ParseSQL(c)
-            tok = tok.replace(j[1], query_to_queryTemplate(c))
+            #tok = tok.replace(j[1], query_to_queryTemplate(c))
+	    tok = buf
     
     return tok
 
