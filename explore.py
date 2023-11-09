@@ -325,7 +325,7 @@ def bracket(str):
             arr_len = len(arr)
             yield (arr_len, str[first + 1: x]) # returns the value
 
-# Needed in the scenario where there is a subquery
+'''# Needed in the scenario where there is a subquery
 def query_to_queryTemplate(q):
     # converts a SQL query into its corresponding template
     
@@ -334,6 +334,7 @@ def query_to_queryTemplate(q):
     ''' Need to do'''
 	# basically take a sql query as input, use these functions to process different types of tokens and 
 	# handle nested queries - but how :(
+'''
  
 def nested_to_temp(nested_q):
     tok = nested_q
