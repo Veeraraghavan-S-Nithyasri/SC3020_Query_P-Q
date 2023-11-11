@@ -1,8 +1,3 @@
-''' Connection is established with DB, A query is sent to Extract which acts as a columns selector, then
-it's sent to Parse, and the parsed query is Converted to template. In the main program, we will have invocation of conn
-and a queries_list [] which will be our test queries '''
-
-
 # IMPORTING neccessary packages
 import psycopg2
 
@@ -12,7 +7,6 @@ from sqlparse.sql import Identifier
 
 import os.path
 import re # Need for get_tabs() in ParseSQL
-#import json
 import os
 import pandas
 import itertools
@@ -20,10 +14,6 @@ import itertools
 from sqlparse.tokens import Keyword
 from sqlparse.tokens import DML
 import re
-
-''' To do for ParseSQL: get_attcol()
-    To do for Conversion: query_to_queryTemplate()
-'''
 
 # CONNECTION TO DATABASE
 class Conn:
@@ -95,8 +85,7 @@ class ParseSQL:
         return [i for i in ans if i != ""]
     # 3. Retreive attribute columns
     def get_attcol(self):
-        ''' Need to do''' # this basically get all 'select'able columns
-        #Logic: Scan through the table names list and find if that occurs after "WHERE" in our query, if yes, extract that column's name and return it
+        
         i = self.q.find("SELECT")
         j = self.q.find("FROM")
         cols = self.q[i+6:j].replace(" ", "")
@@ -226,7 +215,8 @@ class Extract:
         # write in the ans_arr into the attributes
         self.atts = ans_arr
     
-    '''def rid_nallowed_strs(self):
+    ''' Need to remove this commented code for submission if this is not needed for 
+    def rid_nallowed_strs(self):
         # to get rid of strings that are non-allowed
         # basically non-alphanumeric cannot be there in the attributes - this will make optimization faster
 
@@ -325,16 +315,13 @@ def bracket(str):
             arr_len = len(arr)
             yield (arr_len, str[first + 1: x]) # returns the value
 
-'''# Needed in the scenario where there is a subquery
+'''Needed in the scenario where there is a subquery
 def query_to_queryTemplate(q):
-    # converts a SQL query into its corresponding template
+    converts a SQL query into its corresponding template
     
     q_parsed = ParseSQL(q)
-    temp = []
-    ''' Need to do'''
-	# basically take a sql query as input, use these functions to process different types of tokens and 
-	# handle nested queries - but how :(
-'''
+    temp = []'''
+
  
 def nested_to_temp(nested_q):
     tok = nested_q
@@ -349,11 +336,6 @@ def nested_to_temp(nested_q):
 	    tok = buf
     
     return tok
-
-
-# QUERY EXECUTION PLAN AND OPERATOR TREE
-
-# QUERY OPTIMIZED SELECTION
 
 
 
