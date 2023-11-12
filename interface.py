@@ -3,31 +3,48 @@
 
 import streamlit as st
 import graphviz
+from explore import Conn
+from explore import ParseSQL
+import pandas as pd
 
 class dbGUI:
     def __init__(self):
+        self.query_output = pd.DataFrame()
         st.title('SC3020 Project 2')
         st.markdown('''
                     This interface is designed for visualisation of SQL query execution & exploration.
                     ''')
         self.queryInput()
-        tab1, tab2 = st.tabs(["Query Execution Plan", "Data Output"])
-        with tab1:
+        self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
+        with self.tab1:
             self.qepDisplay()
-        with tab2:
-            self.diskAccessVisual()
+        with self.tab2:
+            self.diskAccessVisual(self.query_output)
 
 
     # SQL query input section
     def queryInput(self):
         st.header('Query Input')
-        self.inputBox = st.text_area("Key in your SQL query into the box below, and click on the Execute button.", height=100)
-        st.button("Execute")
+        query = self.inputBox = st.text_area("Key in your SQL query into the box below, and click on the Execute button.", height=100)
+        if st.button("Execute"):
+            if query != "":
+                conn = Conn()
+                parsed = ParseSQL(query)
+                try:
+                    self.query_output = conn.retreive_stats(parsed.q, conn.db_conn)
+                except:
+                    st.toast('Invalid query!')
+            else:
+                st.toast('Missing query!')
+
 
     
     # Visualisation of disk blocks accessed
     def diskAccessVisual(self):
         st.header('Disk blocks accessed')
+
+    def diskAccessVisual(self, data):
+        st.dataframe(data)
 
 
     # QEP display

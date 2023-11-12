@@ -18,8 +18,8 @@ import re
 # CONNECTION TO DATABASE
 class Conn:
     # constructor that extablishes connection to DB
-    def __init__ (self, hst = '', prt = 5432, db = 'TPC-H', uname = 'postgres', pwd = 'test'): 
-        self.db_conn = psycopg2.connect(hst = hst, prt = prt, db = db, usr = uname, pwd = pwd)
+    def __init__ (self, hst = 'localhost', prt = 5432, db = 'TPC-H', uname = 'postgres', pwd = '1234'): 
+        self.db_conn = psycopg2.connect(host = hst, port = prt, database = db, user = uname, password = pwd)
     # PS: We need to set up the DB locally on our comps with PGAdmin with the same usrname, pwd and fill in here
     
     # for disconnection
@@ -31,7 +31,7 @@ class Conn:
         https://chat.openai.com/share/e33e40f4-bc7c-46a0-b38d-42268ef55be3 '''
     
     # This function is to be used by GUI part as well as in Query to Query Template Conversion
-    def retreive_stats(query, db_conn):
+    def retreive_stats(self, query, db_conn):
         # this function takes the query and database connection object as arguments
         
         db = pandas.read_sql_query(query, db_conn)
@@ -40,6 +40,7 @@ class Conn:
         # save as a csv file
         stats.to_csv('statistical_summaries.csv')
         db_conn.close()
+        return db
 
 # PARSING OF THE SQL QUERY
 
