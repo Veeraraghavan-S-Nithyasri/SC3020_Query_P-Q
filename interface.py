@@ -6,6 +6,7 @@ import graphviz
 from explore import Conn
 from explore import ParseSQL
 import pandas as pd
+import pyautogui
 
 class dbGUI:
     def __init__(self):
@@ -36,6 +37,8 @@ class dbGUI:
                     st.toast('Invalid query!')
             else:
                 st.toast('Missing query!')
+        if st.button("Reset"):
+            pyautogui.hotkey("ctrl", "F5")
 
 
     
