@@ -11,11 +11,20 @@ import pyautogui
 class dbGUI:
     def __init__(self):
         self.query_output = pd.DataFrame()
+
         st.title('SC3020 Project 2')
         st.markdown('''
                     This interface is designed for visualisation of SQL query execution & exploration.
                     ''')
+        
+        st.sidebar.text_input("Host", key="host")
+        st.sidebar.text_input("Port", key="port")
+        st.sidebar.text_input("Database", key="database")
+        st.sidebar.text_input("User", key="user")
+        st.sidebar.text_input("Password", key="password")
+
         self.queryInput()
+
         self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
         with self.tab1:
             self.qepDisplay()
@@ -29,7 +38,11 @@ class dbGUI:
         query = self.inputBox = st.text_area("Key in your SQL query into the box below, and click on the Execute button.", height=100)
         if st.button("Execute"):
             if query != "":
-                conn = Conn()
+                try:
+                    conn = Conn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
+                except:
+                    st.toast('Invalid credentials!')
+                    return
                 parsed = ParseSQL(query)
                 try:
                     self.query_output = conn.retreive_stats(parsed.q, conn.db_conn)
