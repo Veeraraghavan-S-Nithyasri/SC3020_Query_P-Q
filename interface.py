@@ -16,7 +16,7 @@ class dbGUI:
         st.markdown('''
                     This interface is designed for visualisation of SQL query execution & exploration.
                     ''')
-        
+        st.sidebar.title("User Credentials")
         st.sidebar.text_input("Host", key="host")
         st.sidebar.text_input("Port", key="port")
         st.sidebar.text_input("Database", key="database")
