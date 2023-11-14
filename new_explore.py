@@ -26,6 +26,12 @@ class DBConn:
     def execute_query(self, query):
         self.cursor.execute(query)
         res = self.cursor.fetchall()
+        column_names = tuple([desc[0] for desc in self.cursor.description])
+        res = [column_names] + res
+        return res
+    
+    def gen_qep(self, query):
+        res = self.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
         return res
 
     def disconnect(self):
@@ -168,7 +174,7 @@ class ParseSQL:
             f.writelines([a+"\n" for a in attribs])
             f.close()
         return attribs
-'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
+#'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
     
 def gen_qep(query):
     conn = DBConn()

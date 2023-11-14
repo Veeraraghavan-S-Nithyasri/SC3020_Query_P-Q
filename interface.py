@@ -5,12 +5,17 @@ import streamlit as st
 import graphviz
 from explore import Conn
 from explore import ParseSQL
+from new_explore import DBConn
+from new_explore import gen_qep
 import pandas as pd
 import pyautogui
 
 class dbGUI:
     def __init__(self):
         self.query_output = pd.DataFrame()
+        self.qep = {}
+        self.planTime = 0
+        self.execTime = 0
 
         st.title('SC3020 Project 2')
         st.markdown('''
@@ -39,13 +44,15 @@ class dbGUI:
         if st.button("Execute"):
             if query != "":
                 try:
-                    conn = Conn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
+                    conn = DBConn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
                 except:
                     st.toast('Invalid credentials!')
                     return
-                parsed = ParseSQL(query)
                 try:
-                    self.query_output = conn.retreive_stats(parsed.q, conn.db_conn)
+                    self.query_output = conn.execute_query(query)
+                    self.qep = (conn.gen_qep(query))[1][0][0]
+                    self.planTime = self.qep["Planning Time"]
+                    self.execTime = self.qep["Execution Time"]
                 except:
                     st.toast('Invalid query!')
             else:
@@ -67,10 +74,15 @@ class dbGUI:
     def qepDisplay(self):
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("Planning Time: -")
-            st.markdown("Execution Time: -")
+            st.markdown("Planning Time: " + str(self.planTime))
+            st.markdown("Execution Time: " + str(self.execTime))
         with col2:
+            st.json(self.qep)
             graph = graphviz.Graph("QEP viz")
+            if self.qep != {}:
+                print("\n\n\n\n\n")
+                self.qep_viz(self.qep["Plan"])
+            """
             graph.node('1', 'Hash join on c=h')
             graph.node('2', 'Index nested loop join on g=a')
             graph.node('3', "Selection on w.id='abc'")
@@ -81,7 +93,21 @@ class dbGUI:
             graph.node('8', 'U')
             graph.node('9', 'S')
             graph.edges(['12', '13', '25', '26', '34', '57', '58', '79'])
+            """
             st.graphviz_chart(graph)
+
+    def qep_viz(self, plan):
+        output = [plan["Node Type"]]
+
+        if "Plans" in plan:
+            for subPlan in plan["Plans"]:
+                subOutput = [self.qep_viz(subPlan)]
+                output += subOutput
+        else:
+            output += [plan["Relation Name"]]
+        print('________________________')
+        print(output)
+        return output
             
 
 
