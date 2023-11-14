@@ -2,6 +2,8 @@ import psycopg2
 import json
 import os
 import sqlparse
+from sqlparse.tokens import Keyword, DML
+from sqlparse.sql import Identifier, IdentifierList
 
 
 def get_all_tables():
@@ -37,7 +39,38 @@ class ParseSQL:
         #self.tables = self.extract_tables_from_query()
         #self.columns = self.get_attcols()
         
+    def extract_all_tables(self):
+        stm = sqlparse.parse(self.query)
+        tables = []
+        for i in stm:
+            e = self.extractNested(i)
+            for j in e:
+                if isinstance(j, IdentifierList):
+                    for l in j.get_identifiers():
+                        l = l.value.replace('"', '').lower()
+                        tables.append(l)
+                if isinstance(j, Identifier):
+                    l = j.value.replace('"', '').lower()
+                    tables.append(l)
 
+    def extractNested(self, statement):
+        upper_lvl = False
+        for i in statement.tokens:
+            if i.is_group:
+                for j in self.extractNested(i):
+                    yield j
+            if upper_lvl:
+                if self.isNested(i):
+                    for j in self.extractNested(i):
+                        yield j
+                elif i.ttype is Keyword and i.value.upper() in ["ORDER BY", "GROUP BY", "HAVING", "ORDER", "BY"]:
+                    upper_lvl = False
+                    StopIteration
+                else:
+                    yield i
+            if i.ttype is Keyword and i.value.upper() is "FROM":
+                upper_lvl = True
+    
     def clean_query(self, sql):
         statements = sqlparse.split(sql)
         statement = statements[0]
@@ -49,6 +82,20 @@ class ParseSQL:
             cleaned_query += ' {}'.format(item.strip())
         return cleaned_query
     
+
+    def isNested(self, statement):
+        '''
+            checks whehter the parsed statement of a SQL query is nested (subqueries) or not
+
+        '''
+        if not statement.is_group:
+            return False
+        
+        for st in statement.tokens:
+            if st.ttype is DML and st.value.upper() == "SELECT":
+                return True
+        return False
+        
     def filter_columns(self, table_name):
         query = f"""
             SELECT 
@@ -121,10 +168,11 @@ class ParseSQL:
             f.writelines([a+"\n" for a in attribs])
             f.close()
         return attribs
-
+'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
     
-    
-    
-        
+def gen_qep(query):
+    conn = DBConn()
+    res = conn.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
+    return res
 
 
