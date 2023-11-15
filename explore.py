@@ -18,8 +18,8 @@ import re
 # CONNECTION TO DATABASE
 class Conn:
     # constructor that extablishes connection to DB
-    def __init__ (self, hst = '', prt = 5432, db = 'tpch', uname = '', pwd = ''): 
-        self.db_conn = psycopg2.connect(hst = hst, prt = prt, db = db, usr = usr, pwd = pwd)
+    def __init__ (self, hst = 'localhost', prt = 5432, db = 'TPC-H', uname = 'postgres', pwd = '1234'): 
+        self.db_conn = psycopg2.connect(host = hst, port = prt, database = db, user = uname, password = pwd)
     # PS: We need to set up the DB locally on our comps with PGAdmin with the same usrname, pwd and fill in here
     
     # for disconnection
@@ -31,7 +31,7 @@ class Conn:
         https://chat.openai.com/share/e33e40f4-bc7c-46a0-b38d-42268ef55be3 '''
     
     # This function is to be used by GUI part as well as in Query to Query Template Conversion
-    def retreive_stats(query, db_conn):
+    def retreive_stats(self, query, db_conn):
         # this function takes the query and database connection object as arguments
         
         db = pandas.read_sql_query(query, db_conn)
@@ -40,6 +40,7 @@ class Conn:
         # save as a csv file
         stats.to_csv('statistical_summaries.csv')
         db_conn.close()
+        return db
 
 # PARSING OF THE SQL QUERY
 
@@ -58,7 +59,7 @@ class ParseSQL:
         final_q = ''
 
         stmt = sqlparse.split(sql_q)[0]
-        parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
+        parsed_q = sqlparse.format(stmt, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
         split_p_q = parsed_q.splitlines()
         
         for i in split_p_q:
@@ -106,10 +107,9 @@ class ParseSQL:
     # 4. Get the tables
 
     def get_tabs(self):
-        
         tabs_arr = []
         stmt = list(sqlparse.parse(self.q))
-	for x in stmt:
+        for x in stmt:
             s_type = stmt.get_type
             if s_type != 'UNKNOWN':
                 from_token = self.get_FROM(stmt)
@@ -142,7 +142,7 @@ class ParseSQL:
 
          # EXTRA UTIL FN
 
-        def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
+    def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
             flag_from = False
             for x in parsed.tokens:
                 if x.is_group:
@@ -333,7 +333,7 @@ def nested_to_temp(nested_q):
             
             buf = ParseSQL(c)
             #tok = tok.replace(j[1], query_to_queryTemplate(c))
-	    tok = buf
+        tok = buf
     
     return tok
 
