@@ -16,6 +16,9 @@ class dbGUI:
         self.qep = {}
         self.planTime = 0
         self.execTime = 0
+        self.graph = graphviz.Graph("QEP viz",node_attr={'color':"red3"})
+        self.optIndex = 0
+        self.relIndex = 0
 
         st.title('SC3020 Project 2')
         st.markdown('''
@@ -48,13 +51,26 @@ class dbGUI:
                 except:
                     st.toast('Invalid credentials!')
                     return
+                
                 try:
                     self.query_output = conn.execute_query(query)
-                    self.qep = (conn.gen_qep(query))[1][0][0]
+                except:
+                    st.toast('Invalid query!')
+
+                try:
+                    self.qep = (conn.gen_qep(query))[0][0][0]
+                    print(self.qep)
                     self.planTime = self.qep["Planning Time"]
                     self.execTime = self.qep["Execution Time"]
                 except:
-                    st.toast('Invalid query!')
+                    try:
+                        self.qep = (conn.gen_qep(query))[1][0][0]
+                        print(self.qep)
+                        self.planTime = self.qep["Planning Time"]
+                        self.execTime = self.qep["Execution Time"]
+                    except Exception as error:
+                        st.toast("QEP error!")
+                        print("Exception: ", error)
             else:
                 st.toast('Missing query!')
         if st.button("Reset"):
@@ -76,38 +92,51 @@ class dbGUI:
         with col1:
             st.markdown("Planning Time: " + str(self.planTime))
             st.markdown("Execution Time: " + str(self.execTime))
+
         with col2:
             st.json(self.qep)
-            graph = graphviz.Graph("QEP viz")
             if self.qep != {}:
                 print("\n\n\n\n\n")
-                self.qep_viz(self.qep["Plan"])
-            """
-            graph.node('1', 'Hash join on c=h')
-            graph.node('2', 'Index nested loop join on g=a')
-            graph.node('3', "Selection on w.id='abc'")
-            graph.node('4', 'W')
-            graph.node('5', 'Sort-merge join on d=f')
-            graph.node('6', 'R')
-            graph.node('7', "Selection on d='Hello' AND e='World'")
-            graph.node('8', 'U')
-            graph.node('9', 'S')
-            graph.edges(['12', '13', '25', '26', '34', '57', '58', '79'])
-            """
-            st.graphviz_chart(graph)
+                nodes = self.qep_viz(self.qep["Plan"])
+                print(nodes)
+                self.qep_graph(nodes)
+            
+            st.graphviz_chart(self.graph)
 
     def qep_viz(self, plan):
-        output = [plan["Node Type"]]
+        operator = ""
+        if "Join Type" in plan:
+            operator += (str(plan["Join Type"]) + " ")
+        operator += str(plan["Node Type"])
+        if "Hash Cond" in plan:
+            operator += (" on " + str(plan["Hash Cond"]))
+        operator +=  ("\nBuffers - shared hit=" + str(plan["Shared Hit Blocks"]) + ", read=" + str(plan["Shared Read Blocks"]))
+        output = [operator + "\n\n[" + str(self.optIndex) + "]"]
+        self.optIndex += 1
 
         if "Plans" in plan:
             for subPlan in plan["Plans"]:
                 subOutput = [self.qep_viz(subPlan)]
                 output += subOutput
         else:
-            output += [plan["Relation Name"]]
-        print('________________________')
-        print(output)
+            relation = [plan["Relation Name"]]
+            relation[0] += "\n{" + str(self.relIndex) + "}"
+            output += relation
+            self.relIndex += 1
+        
+        #print(output)
         return output
+    
+    def qep_graph(self, nodes):
+        for node in nodes[1:]:
+            if type(node) == list:
+                self.graph.edge(nodes[0], node[0])
+            else:
+                self.graph.edge(nodes[0], node)
+        
+        for node in nodes[1:]:
+            if type(node) == list:
+                self.qep_graph(node)
             
 
 

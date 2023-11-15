@@ -74,7 +74,7 @@ class ParseSQL:
                     StopIteration
                 else:
                     yield i
-            if i.ttype is Keyword and i.value.upper() is "FROM":
+            if i.ttype is Keyword and i.value.upper() == "FROM":
                 upper_lvl = True
     
     def clean_query(self, sql):
