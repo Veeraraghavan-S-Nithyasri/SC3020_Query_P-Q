@@ -3,8 +3,6 @@
 
 import streamlit as st
 import graphviz
-from explore import Conn
-from explore import ParseSQL
 from new_explore import DBConn
 from new_explore import gen_qep
 import pandas as pd
@@ -22,7 +20,12 @@ class dbGUI:
 
         st.title('SC3020 Project 2')
         st.markdown('''
-                    This interface is designed for visualisation of SQL query execution & exploration.
+                    This interface is designed for visualisation of SQL query execution & exploration.\n
+                    The "Query Execution Plan" tab shows the query execution plan while the "Data Output" tab shows the tuples retrieved.\n
+                    How to use:\n
+                    1. Enter your user credentials (host, port, database, user, password) in the fields provided in the sidebar.\n
+                    2. Enter the query that you want to run.\n
+                    3. Press the "execute" button and wait for the results.
                     ''')
         st.sidebar.title("User Credentials")
         st.sidebar.text_input("Host", key="host")
@@ -94,11 +97,15 @@ class dbGUI:
             st.markdown("Execution Time: " + str(self.execTime))
 
         with col2:
-            st.json(self.qep)
+            #st.json(self.qep)
+            st.markdown('''
+                        QEP visualisation tree\n
+                        NOTE: The numbers at the bottom of each tree node are for mapping purposes and do not indicate any order of execution.
+                        ''')
             if self.qep != {}:
                 print("\n\n\n\n\n")
                 nodes = self.qep_viz(self.qep["Plan"])
-                print(nodes)
+                #print(nodes)
                 self.qep_graph(nodes)
             
             st.graphviz_chart(self.graph)
