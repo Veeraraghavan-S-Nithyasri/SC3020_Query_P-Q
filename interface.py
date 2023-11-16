@@ -44,7 +44,7 @@ class dbGUI:
         st.header('Query Input')
         query = self.inputBox = st.text_area("Key in your SQL query into the box below, and click on the Execute button.", height=100, key="queryInput")
         if st.button("Execute"):
-            print("____________________\n\n\n\n\n____________________\nstart")
+            print("\n\n\n\n\n\n\n\n\n\n\n\n\n____________________\nStart execution")
             if query != "":
                 try:
                     conn = DBConn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
@@ -75,6 +75,7 @@ class dbGUI:
 
         def on_click():
             st.session_state.queryInput = ""
+            print("Query input cleared")
         
         st.button("Reset", on_click=on_click)
 
@@ -86,7 +87,7 @@ class dbGUI:
             new_header = data.iloc[0]
             data = data[1:]
             data.columns = new_header
-            print(sys.getsizeof(data))
+            print("Data size: ", sys.getsizeof(data))
             if sys.getsizeof(data) < 642243305:
                 st.dataframe(data)
             else:
