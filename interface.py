@@ -4,13 +4,14 @@
 import streamlit as st
 import graphviz
 from new_explore import DBConn
-from new_explore import gen_qep
+from new_explore import gen_qep, queryDiskBlocks
 import pandas as pd
 import pyautogui
 
 class dbGUI:
     def __init__(self):
         self.query_output = pd.DataFrame()
+        self.query_outputB =  pd.DataFrame()
         self.qep = {}
         self.planTime = 0
         self.execTime = 0
@@ -40,7 +41,7 @@ class dbGUI:
         with self.tab1:
             self.qepDisplay()
         with self.tab2:
-            self.diskAccessVisual(self.query_output)
+            self.diskAccessVisual(self.query_outputB)
 
 
     # SQL query input section
@@ -59,6 +60,13 @@ class dbGUI:
                     self.query_output = conn.execute_query(query)
                 except:
                     st.toast('Invalid query!')
+
+                try:
+                    #queryDiskBlocks(query)
+                    self.query_outputB = conn.execute_query(queryDiskBlocks(query))
+                except:
+                    print(error)
+                    st.toast('Disk block visualization error!')
 
                 try:
                     self.qep = (conn.gen_qep(query))[0][0][0]

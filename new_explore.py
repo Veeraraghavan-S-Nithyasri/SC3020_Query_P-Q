@@ -4,6 +4,7 @@ import os
 import sqlparse
 from sqlparse.tokens import Keyword, DML
 from sqlparse.sql import Identifier, IdentifierList
+from sql_metadata import Parser
 
 
 def get_all_tables():
@@ -180,5 +181,56 @@ def gen_qep(query):
     conn = DBConn()
     res = conn.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
     return res
+
+
+# adds ctid with block number column to sql query
+def queryDiskBlocks(query):
+    parsed = sqlparse.parse(query)
+    stmt = parsed[0]
+    tokens = stmt.tokens
+
+    querySplitA = ""
+    querySplitB = ""
+
+    select_end = False
+
+    for token in tokens:
+        #print(str(token))
+        if token.match(sqlparse.tokens.Keyword, ["from", "FROM"]):
+            select_end = True
+        if not select_end:
+            querySplitA += str(token)
+        else:
+            querySplitB += str(token)
+            
+
+
+    #print(querySplitA)
+    #print(querySplitB)
+
+    # queryStatements = sqlparse.split(query)
+    # querySELECT = queryStatements[0]
+    # print(ParseSQL.cleanquery(query))
+    
+    tableNames = Parser(query).tables.copy()
+    print(tableNames)
+    tableAlias = Parser(query).tables_aliases.copy()
+    print(tableAlias)
+    
+    
+    if (len(tableAlias)!=0 ):
+        for key in tableAlias:
+            print(key)
+            querySplitA += ", (" + key + ".ctid::text::point)[0]::bigint as " + key + "_ctid_blocknumber "
+    else:
+        for item in tableNames:
+            print(item)
+            querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
+
+    
+    newquery = querySplitA + querySplitB
+    print(newquery)
+    
+    return newquery
 
 
