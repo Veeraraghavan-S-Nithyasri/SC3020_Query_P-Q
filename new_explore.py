@@ -4,7 +4,7 @@ import os
 import sqlparse
 from sqlparse.tokens import Keyword, DML
 from sqlparse.sql import Identifier, IdentifierList
-from sql_metadata import Parser
+#from sql_metadata import Parser
 
 
 def get_all_tables():
@@ -59,6 +59,7 @@ class ParseSQL:
                 if isinstance(j, Identifier):
                     l = j.value.replace('"', '').lower()
                     tables.append(l)
+        return tables
 
     def extractNested(self, statement):
         upper_lvl = False
@@ -99,7 +100,7 @@ class ParseSQL:
             return False
         
         for st in statement.tokens:
-            if st.ttype is DML and st.value.upper() == "SELECT":
+            if st.ttype is DML and (st.value.upper() == "SELECT" or st.value.upper() == "select"):
                 return True
         return False
         
@@ -175,7 +176,9 @@ class ParseSQL:
             f.writelines([a+"\n" for a in attribs])
             f.close()
         return attribs
-#'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
+        #'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
+
+
     
 def gen_qep(query):
     conn = DBConn()
@@ -185,38 +188,49 @@ def gen_qep(query):
 
 # adds ctid with block number column to sql query
 def queryDiskBlocks(query):
-    parsed = sqlparse.parse(query)
-    stmt = parsed[0]
-    tokens = stmt.tokens
+    parsed = ParseSQL(query)
+    stm = sqlparse.parse(query)
+    tokens = parsed.tokens
 
     querySplitA = ""
     querySplitB = ""
+    querySplitBstr = []
 
     select_end = False
 
     for token in tokens:
-        #print(str(token))
+        print(token.ttype)
         if token.match(sqlparse.tokens.Keyword, ["from", "FROM"]):
             select_end = True
         if not select_end:
             querySplitA += str(token)
         else:
-            querySplitB += str(token)
+            querySplitBstr.append(str(token))
             
 
+    print(querySplitA)
+    print(querySplitBstr)
 
-    #print(querySplitA)
-    #print(querySplitB)
-
-    # queryStatements = sqlparse.split(query)
-    # querySELECT = queryStatements[0]
-    # print(ParseSQL.cleanquery(query))
-    
-    tableNames = Parser(query).tables.copy()
+    tableNames = parsed.extract_all_tables()
     print(tableNames)
-    tableAlias = Parser(query).tables_aliases.copy()
+
+    for table in tableNames:
+        table_included = False
+        for s in querySplitBstr:
+            if s == table:
+                table_included = True
+        if not table_included:
+            querySplitBstr.insert(1, ' ')
+            querySplitBstr.insert(2, table)
+            querySplitBstr.insert(3, ',')
+
+    querySplitB = ''.join(querySplitBstr)
+    print(querySplitB)
+
+
+
+    tableAlias = []
     print(tableAlias)
-    
     
     if (len(tableAlias)!=0 ):
         for key in tableAlias:
