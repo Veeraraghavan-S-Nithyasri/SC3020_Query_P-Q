@@ -1,12 +1,7 @@
-
-'''Streamlit interface test demo'''
-
 import streamlit as st
 import graphviz
 from new_explore import DBConn
-from new_explore import gen_qep
 import pandas as pd
-import pyautogui
 import sys
 
 class dbGUI:
@@ -49,7 +44,7 @@ class dbGUI:
         st.header('Query Input')
         query = self.inputBox = st.text_area("Key in your SQL query into the box below, and click on the Execute button.", height=100, key="queryInput")
         if st.button("Execute"):
-            print("____________________\n\n\n\n\n____________________")
+            print("____________________\n\n\n\n\n____________________\nstart")
             if query != "":
                 try:
                     conn = DBConn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
@@ -61,6 +56,7 @@ class dbGUI:
                     self.query_output = conn.execute_query(query)
                 except:
                     st.toast('Invalid query!')
+                    return
 
                 try:
                     self.qep = (conn.gen_qep(query))[0][0][0]
@@ -94,8 +90,9 @@ class dbGUI:
             if sys.getsizeof(data) < 642243305:
                 st.dataframe(data)
             else:
-                st.markdown("Data is too large to be displayed fully!\nThe data below only shows the first 5 tuples retrieved.")
-                st.dataframe(data.head())
+                st.markdown('''Data is too large to be displayed fully!
+                            The data below only shows the first 5 tuples retrieved.''')
+                st.dataframe(data.head(10))
         else:
             st.markdown("No data available!")
 
@@ -107,7 +104,7 @@ class dbGUI:
             st.markdown("Execution Time: " + str(self.execTime))
 
         with col2:
-            #st.json(self.qep)
+            st.json(self.qep)
             st.markdown('''
                         QEP visualisation tree\n
                         NOTE: The numbers at the bottom of each tree node are for mapping purposes and do not indicate any order of execution.
@@ -126,6 +123,8 @@ class dbGUI:
         operator += str(plan["Node Type"])
         if "Hash Cond" in plan:
             operator += (" on " + str(plan["Hash Cond"]))
+        if "Index Cond" in plan:
+            operator += (" on " + str(plan["Index Cond"]))
         operator +=  ("\nBuffers - shared hit=" + str(plan["Shared Hit Blocks"]) + ", read=" + str(plan["Shared Read Blocks"]))
         output = [operator + "\n[" + str(self.optIndex) + "]"]
         self.optIndex += 1
