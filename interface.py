@@ -104,7 +104,7 @@ class dbGUI:
             st.markdown("Execution Time: " + str(self.execTime))
 
         with col2:
-            st.json(self.qep)
+            #st.json(self.qep)
             st.markdown('''
                         QEP visualisation tree\n
                         NOTE: The numbers at the bottom of each tree node are for mapping purposes and do not indicate any order of execution.
