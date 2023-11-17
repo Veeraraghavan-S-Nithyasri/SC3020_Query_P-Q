@@ -1,7 +1,7 @@
+python >= 3.5
 streamlit
 graphviz
 pandas
 psycopg2
 psycopg2-binary
 sqlparse
-subprocess
