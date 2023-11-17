@@ -215,87 +215,7 @@ class Extract:
         # write in the ans_arr into the attributes
         self.atts = ans_arr
     
-    ''' Need to remove this commented code for submission if this is not needed for 
-    def rid_nallowed_strs(self):
-        # to get rid of strings that are non-allowed
-        # basically non-alphanumeric cannot be there in the attributes - this will make optimization faster
-
-        lst_of_atts = []
-
-        for att in self.atts:
-            if att['data_type'] in ['text', 'character', 'character varying']:
-        
-        # query 
-		q = "SELECT count(*) FROM {tabn} WHERE {attcoln} ~ '^.*[^A-Za-z0-9 .-].*$'".format(tabn = self.tab, attcoln=item[''])
-                
-                
-                
-                
-                
-                #actually connect to the DB to execute 
-                
-                conn = db_conn.DBConnection()
-                answer = db_conn.execute(query)
-                db_conn.close()
-
-                number = answer[0][0]
-                
-		if number != 0:
-                    continue
-                
-            lst_of_atts.append(att)
-
-        self.atts = lst_of_atts
     
-
-    def att_cols(self):
-        
-	if os.path.isfile('tables/{}.txt'.format(self.table_name)):
-		self.atts = self.get_attribs()
-         # call all the util functions to do make the query clean
-	else:
-            self.dtype()
-            self.rid_nallowed_strs()
-            
-            # then we write and store into the file
-            self.write_txt()
-	# return the attribute columns
-        return self.atts
-
-    def write_txt(self):
-        # store into text file: 2 cases - dir exists vs doesn't exist
-
-        # does dir exist? yes then write into
-        if os.path.exists('tables'):
-            with open('tables/{}.txt'.format(self.tab), 'w') as filehandle:
-                for x in self.atts:
-                    filehandle.write('{}\n'.format(x))
-        
-        # dir doesn't exist, create, then write into
-        elif not os.path.exists('tables'):
-            # create
-            os.makedirs('tables')
-            # write
-            with open('tables/{}.txt'.format(self.tab), 'w') as filehandle:
-                for x in self.atts:
-                    filehandle.write('{}\n'.format(x))
-
-    def get_attribs(self): # function that reads table and returns its attributes
-
-        # check if table exists - Note: Tables are stored as text files
-        if os.path.isfile('tables/{}.txt'.format(self.tab)):
-            self.attribs = self.retreive_text_read() # reads the attribs from the table's txt file
-        
-        # if table doesn't exist
-        else:
-            self.dtype() # retreives the datatypes of the attributes of the relation
-            
-            self.rid_nallowed_strs() # to get rid of strings that non-allowed
-            self.att_cols() # get the columns that are selectable
-            
-            self.write_txt() # store into text file
-        
-        return self.attribs'''
     
 # CONVERSION OF SQL QUERY
 
@@ -332,7 +252,6 @@ def nested_to_temp(nested_q):
         if 'select' in c.lower():
             
             buf = ParseSQL(c)
-            #tok = tok.replace(j[1], query_to_queryTemplate(c))
         tok = buf
     
     return tok
