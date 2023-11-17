@@ -53,29 +53,32 @@ class ParseSQL:
             for j in e:
                 if isinstance(j, IdentifierList):
                     for l in j.get_identifiers():
-                        l = l.value.replace('"', '').lower()
+                        l = l.value.replace('"', '')
                         tables.append(l)
                 if isinstance(j, Identifier):
-                    l = j.value.replace('"', '').lower()
+                    l = j.value.replace('"', '')
                     tables.append(l)
         return tables
     
-    def extract_all_table_names(self):
+    def extract_toplevel_tables(self):
         stm = sqlparse.parse(self.query)
         tables = []
+        upper_lvl = False
         for i in stm:
-            e = self.extractNested(i)
-            for j in e:
-                if isinstance(j, IdentifierList):
-                    for l in j.get_identifiers():
-                        k = l.get_name()
-                        l = l.value.replace('"', '').lower()
+            for j in i.tokens:
+                if upper_lvl:
+                    if isinstance(j, IdentifierList):
+                        for l in j.get_identifiers():
+                            k = l.get_name()
+                            tables.append(k)
+                    if isinstance(j, Identifier):
+                        k = j.get_name()
                         tables.append(k)
-                if isinstance(j, Identifier):
-                    k = j.get_name()
-                    l = j.value.replace('"', '').lower()
-                    tables.append(k)
+                if j.ttype is Keyword and j.value.upper() == "FROM":
+                    upper_lvl = True
         return tables
+
+
 
     def extractNested(self, statement):
         upper_lvl = False
@@ -210,7 +213,6 @@ def queryDiskBlocks(query):
 
     querySplitA = ""
     querySplitB = ""
-    querySplitBstr = []
 
     select_end = False
 
@@ -222,42 +224,21 @@ def queryDiskBlocks(query):
         if not select_end:
             querySplitA += str(token)
         else:
-            if isinstance(token, IdentifierList):
-                for idfr in token:
-                    querySplitBstr.append(str(idfr))
-            else:
-                querySplitBstr.append(str(token))
+            querySplitB += str(token)
             
 
     print(querySplitA)
-    print(querySplitBstr)
+    print(querySplitB)
 
-    # extracts all table identifiers used in the SQL query.
-    tableNames = parsed.extract_all_tables()
+    # extracts tables used in the SQL query. nested queries are not considered.
+    tableNames = parsed.extract_toplevel_tables()
     print(tableNames)
 
-    # modified version of extract_all_tables, it instead extracts the current names of the tables, which is either an alias or its real name.
-    tableNames_current = parsed.extract_all_table_names()
-    print(tableNames_current)
-
-    # partial query modifier; to account for any nested queries, it adds tables in those queries into the upper level FROM clause.
-    for table in tableNames:
-        table_included = False
-        for s in querySplitBstr:
-            if s.casefold() == table.casefold():
-                table_included = True
-        if not table_included:
-            querySplitBstr.insert(1, ' ')
-            querySplitBstr.insert(2, table)
-            querySplitBstr.insert(3, ',')
-
-    querySplitB = ''.join(querySplitBstr)
-    print(querySplitB)
 
 
 
     # modifies the SELECT clause from earlier to also select the block numbers from the ctid attribute.
-    for item in tableNames_current:
+    for item in tableNames:
         print(item)
         querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
 
