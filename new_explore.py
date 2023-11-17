@@ -4,7 +4,6 @@ import os
 import sqlparse
 from sqlparse.tokens import Keyword, DML
 from sqlparse.sql import Identifier, IdentifierList
-#from sql_metadata import Parser
 
 
 def get_all_tables():
