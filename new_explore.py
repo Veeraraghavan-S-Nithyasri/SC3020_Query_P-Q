@@ -60,6 +60,23 @@ class ParseSQL:
                     l = j.value.replace('"', '').lower()
                     tables.append(l)
         return tables
+    
+    def extract_all_table_names(self):
+        stm = sqlparse.parse(self.query)
+        tables = []
+        for i in stm:
+            e = self.extractNested(i)
+            for j in e:
+                if isinstance(j, IdentifierList):
+                    for l in j.get_identifiers():
+                        k = l.get_name()
+                        l = l.value.replace('"', '').lower()
+                        tables.append(k)
+                if isinstance(j, Identifier):
+                    k = j.get_name()
+                    l = j.value.replace('"', '').lower()
+                    tables.append(k)
+        return tables
 
     def extractNested(self, statement):
         upper_lvl = False
@@ -198,8 +215,9 @@ def queryDiskBlocks(query):
 
     select_end = False
 
+    # splits the SELECT clause from the rest of the SQL query. The entire SELECT clause is stored in a single string.
     for token in tokens:
-        print(token.ttype)
+        #print(token)
         if token.match(sqlparse.tokens.Keyword, ["from", "FROM"]):
             select_end = True
         if not select_end:
@@ -211,13 +229,19 @@ def queryDiskBlocks(query):
     print(querySplitA)
     print(querySplitBstr)
 
+    # extracts all table identifiers used in the SQL query.
     tableNames = parsed.extract_all_tables()
     print(tableNames)
 
+    # modified version of extract_all_tables, it instead extracts the current names of the tables, which is either an alias or its real name.
+    tableNames_current = parsed.extract_all_table_names()
+    print(tableNames_current)
+
+    # partial query modifier; to account for any nested queries, it adds tables in those queries into the upper level FROM clause.
     for table in tableNames:
         table_included = False
         for s in querySplitBstr:
-            if s == table:
+            if s.casefold() == table.casefold():
                 table_included = True
         if not table_included:
             querySplitBstr.insert(1, ' ')
@@ -229,17 +253,10 @@ def queryDiskBlocks(query):
 
 
 
-    tableAlias = []
-    print(tableAlias)
-    
-    if (len(tableAlias)!=0 ):
-        for key in tableAlias:
-            print(key)
-            querySplitA += ", (" + key + ".ctid::text::point)[0]::bigint as " + key + "_ctid_blocknumber "
-    else:
-        for item in tableNames:
-            print(item)
-            querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
+    # modifies the SELECT clause from earlier to also select the block numbers from the ctid attribute.
+    for item in tableNames_current:
+        print(item)
+        querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
 
     
     newquery = querySplitA + querySplitB

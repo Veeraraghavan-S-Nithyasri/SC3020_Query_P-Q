@@ -1,10 +1,7 @@
 import streamlit as st
 import graphviz
 from new_explore import DBConn
-<<<<<<< HEAD
-from new_explore import gen_qep, queryDiskBlocks
-=======
->>>>>>> main
+from new_explore import queryDiskBlocks
 import pandas as pd
 import sys
 
@@ -100,6 +97,14 @@ class dbGUI:
             data = data[1:]
             data.columns = new_header
             print("Data size: ", sys.getsizeof(data))
+            st.markdown('''Summary of disk blocks accessed''')
+            for col in data:
+                if "ctid_blocknumber" in col:
+                    blockData = pd.DataFrame(data[col].unique(), columns=[col])
+                    tableName = col.replace('_ctid_blocknumber', '')
+                    st.markdown("Blocks accessed for table " + tableName)
+                    st.dataframe(blockData, hide_index=True)
+            st.markdown('''Data output''')
             if sys.getsizeof(data) < 642243305:
                 st.dataframe(data)
             else:
