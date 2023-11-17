@@ -4,6 +4,7 @@ import os
 import sqlparse
 from sqlparse.tokens import Keyword, DML
 from sqlparse.sql import Identifier, IdentifierList
+#from sql_metadata import Parser
 
 
 def get_all_tables():
@@ -58,6 +59,24 @@ class ParseSQL:
                 if isinstance(j, Identifier):
                     l = j.value.replace('"', '').lower()
                     tables.append(l)
+        return tables
+    
+    def extract_all_table_names(self):
+        stm = sqlparse.parse(self.query)
+        tables = []
+        for i in stm:
+            e = self.extractNested(i)
+            for j in e:
+                if isinstance(j, IdentifierList):
+                    for l in j.get_identifiers():
+                        k = l.get_name()
+                        l = l.value.replace('"', '').lower()
+                        tables.append(k)
+                if isinstance(j, Identifier):
+                    k = j.get_name()
+                    l = j.value.replace('"', '').lower()
+                    tables.append(k)
+        return tables
 
     def extractNested(self, statement):
         upper_lvl = False
@@ -98,7 +117,7 @@ class ParseSQL:
             return False
         
         for st in statement.tokens:
-            if st.ttype is DML and st.value.upper() == "SELECT":
+            if st.ttype is DML and (st.value.upper() == "SELECT" or st.value.upper() == "select"):
                 return True
         return False
         
@@ -174,11 +193,75 @@ class ParseSQL:
             f.writelines([a+"\n" for a in attribs])
             f.close()
         return attribs
-#'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
+        #'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
+
+
     
 def gen_qep(query):
     conn = DBConn()
     res = conn.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
     return res
+
+
+# adds ctid with block number column to sql query
+def queryDiskBlocks(query):
+    parsed = ParseSQL(query)
+    stm = sqlparse.parse(query)
+    tokens = parsed.tokens
+
+    querySplitA = ""
+    querySplitB = ""
+    querySplitBstr = []
+
+    select_end = False
+
+    # splits the SELECT clause from the rest of the SQL query. The entire SELECT clause is stored in a single string.
+    for token in tokens:
+        #print(token)
+        if token.match(sqlparse.tokens.Keyword, ["from", "FROM"]):
+            select_end = True
+        if not select_end:
+            querySplitA += str(token)
+        else:
+            querySplitBstr.append(str(token))
+            
+
+    print(querySplitA)
+    print(querySplitBstr)
+
+    # extracts all table identifiers used in the SQL query.
+    tableNames = parsed.extract_all_tables()
+    print(tableNames)
+
+    # modified version of extract_all_tables, it instead extracts the current names of the tables, which is either an alias or its real name.
+    tableNames_current = parsed.extract_all_table_names()
+    print(tableNames_current)
+
+    # partial query modifier; to account for any nested queries, it adds tables in those queries into the upper level FROM clause.
+    for table in tableNames:
+        table_included = False
+        for s in querySplitBstr:
+            if s.casefold() == table.casefold():
+                table_included = True
+        if not table_included:
+            querySplitBstr.insert(1, ' ')
+            querySplitBstr.insert(2, table)
+            querySplitBstr.insert(3, ',')
+
+    querySplitB = ''.join(querySplitBstr)
+    print(querySplitB)
+
+
+
+    # modifies the SELECT clause from earlier to also select the block numbers from the ctid attribute.
+    for item in tableNames_current:
+        print(item)
+        querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
+
+    
+    newquery = querySplitA + querySplitB
+    print(newquery)
+    
+    return newquery
 
 

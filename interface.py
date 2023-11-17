@@ -1,33 +1,21 @@
 import streamlit as st
 import graphviz
 from new_explore import DBConn
+from new_explore import queryDiskBlocks
 import pandas as pd
 import sys
 
 class dbGUI:
     def __init__(self):
-        self.query_output = pd.DataFrame()                                  #Pandas dataframe containing the tuples retrieved from the SQL query
-        self.qep = {}                                                       #JSON object containing the QEP plan of the SQL query
-        self.planTime = 0                                                   #Variable containing the planning time of the SQL query
-        self.execTime = 0                                                   #Variable containing the execution time of the SQL query
-        self.graph = graphviz.Graph("QEP viz",node_attr={'color':"red3"})   #graphviz.graph object that displays a QEP tree
-        self.optIndex = 0                                                   #Operator counter
-        self.relIndex = 0                                                   #Relation counter
+        self.query_output = pd.DataFrame()
+        self.query_outputB =  pd.DataFrame()
+        self.qep = {}
+        self.planTime = 0
+        self.execTime = 0
+        self.graph = graphviz.Graph("QEP viz",node_attr={'color':"red3"})
+        self.optIndex = 0
+        self.relIndex = 0
 
-        self.titleDisplay()
-        
-        self.sideBar()
-        
-        self.queryInput()
-
-        self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
-        with self.tab1:
-            self.qepDisplay()
-        with self.tab2:
-            self.diskAccessVisual(self.query_output)
-
-    #Title section displaying information about the web application
-    def titleDisplay(self):
         st.title('SC3020 Project 2')
         st.markdown('''
                     This interface is designed for visualisation of SQL query execution & exploration.\n
@@ -37,16 +25,20 @@ class dbGUI:
                     2. Enter the query that you want to run.\n
                     3. Press the "execute" button and wait for the results.
                     ''')
-    
-    
-    #Sidebar section for users to enter their credentials
-    def sideBar(self):
         st.sidebar.title("User Credentials")
         st.sidebar.text_input("Host", key="host")
         st.sidebar.text_input("Port", key="port")
         st.sidebar.text_input("Database", key="database")
         st.sidebar.text_input("User", key="user")
         st.sidebar.text_input("Password", key="password")
+
+        self.queryInput()
+
+        self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
+        with self.tab1:
+            self.qepDisplay()
+        with self.tab2:
+            self.diskAccessVisual(self.query_outputB)
 
 
     # SQL query input section
@@ -60,15 +52,20 @@ class dbGUI:
                     conn = DBConn(st.session_state.host, st.session_state.port, st.session_state.database, st.session_state.user, st.session_state.password)
                 except:
                     st.toast('Invalid credentials!')
-                    print("Error: Invalid credentials")
                     return
                 
                 try:
                     self.query_output = conn.execute_query(query)
                 except:
                     st.toast('Invalid query!')
-                    print("Error: Invalid query")
                     return
+
+                try:
+                    #queryDiskBlocks(query)
+                    self.query_outputB = conn.execute_query(queryDiskBlocks(query))
+                except:
+                    print(error)
+                    st.toast('Disk block visualization error!')
 
                 try:
                     self.qep = (conn.gen_qep(query))[0][0][0]
@@ -100,6 +97,14 @@ class dbGUI:
             data = data[1:]
             data.columns = new_header
             print("Data size: ", sys.getsizeof(data))
+            st.markdown('''Summary of disk blocks accessed''')
+            for col in data:
+                if "ctid_blocknumber" in col:
+                    blockData = pd.DataFrame(data[col].unique(), columns=[col])
+                    tableName = col.replace('_ctid_blocknumber', '')
+                    st.markdown("Blocks accessed for table " + tableName)
+                    st.dataframe(blockData, hide_index=True)
+            st.markdown('''Data output''')
             if sys.getsizeof(data) < 642243305:
                 st.dataframe(data)
             else:
@@ -123,13 +128,13 @@ class dbGUI:
                         NOTE: The numbers at the bottom of each tree node are for mapping purposes and do not indicate any order of execution.
                         ''')
             if self.qep != {}:
-                nodes = self.qepViz(self.qep["Plan"])
+                nodes = self.qep_viz(self.qep["Plan"])
                 #print(nodes)
-                self.qepGraph(nodes)
+                self.qep_graph(nodes)
                 st.graphviz_chart(self.graph)
 
     #Function used to extract out relevant information from the QEP JSON retrieved
-    def qepViz(self, plan):
+    def qep_viz(self, plan):
         operator = ""
         if "Join Type" in plan:
             operator += (str(plan["Join Type"]) + " ")
@@ -144,7 +149,7 @@ class dbGUI:
 
         if "Plans" in plan:
             for subPlan in plan["Plans"]:
-                subOutput = [self.qepViz(subPlan)]
+                subOutput = [self.qep_viz(subPlan)]
                 output += subOutput
         else:
             relation = [plan["Relation Name"]]
@@ -156,7 +161,7 @@ class dbGUI:
         return output
     
     #Function used for adding operators/relations as nodes to the QEP tree
-    def qepGraph(self, nodes):
+    def qep_graph(self, nodes):
         for node in nodes[1:]:
             if type(node) == list:
                 self.graph.edge(nodes[0], node[0])
@@ -165,7 +170,11 @@ class dbGUI:
         
         for node in nodes[1:]:
             if type(node) == list:
-                self.qepGraph(node)
+                self.qep_graph(node)
+            
+
+
+    
 
 
 
