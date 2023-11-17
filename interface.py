@@ -9,13 +9,28 @@ class dbGUI:
     def __init__(self):
         self.query_output = pd.DataFrame()
         self.query_outputB =  pd.DataFrame()
-        self.qep = {}
-        self.planTime = 0
-        self.execTime = 0
-        self.graph = graphviz.Graph("QEP viz",node_attr={'color':"red3"})
-        self.optIndex = 0
-        self.relIndex = 0
+        self.qep = {}                                                       #JSON object containing the QEP plan of the SQL query
+        self.planTime = 0                                                   #Variable containing the planning time of the SQL query
+        self.execTime = 0                                                   #Variable containing the execution time of the SQL query
+        self.graph = graphviz.Graph("QEP viz",node_attr={'color':"red3"})   #graphviz.graph object that displays a QEP tree
+        self.optIndex = 0                                                   #Operator counter
+        self.relIndex = 0                                                   #Relation counter
 
+        self.titleDisplay()
+
+        self.sideBar()
+
+        self.queryInput()
+
+        self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
+        with self.tab1:
+            self.qepDisplay()
+        with self.tab2:
+            self.diskAccessVisual(self.query_outputB)
+
+
+    #Title section displaying information about the web application
+    def titleDisplay(self):
         st.title('SC3020 Project 2')
         st.markdown('''
                     This interface is designed for visualisation of SQL query execution & exploration.\n
@@ -25,20 +40,16 @@ class dbGUI:
                     2. Enter the query that you want to run.\n
                     3. Press the "execute" button and wait for the results.
                     ''')
+
+
+    #Sidebar section for users to enter their credentials
+    def sideBar(self):
         st.sidebar.title("User Credentials")
         st.sidebar.text_input("Host", key="host")
         st.sidebar.text_input("Port", key="port")
         st.sidebar.text_input("Database", key="database")
         st.sidebar.text_input("User", key="user")
         st.sidebar.text_input("Password", key="password")
-
-        self.queryInput()
-
-        self.tab1, self.tab2 = st.tabs(["Query Execution Plan", "Data Output"])
-        with self.tab1:
-            self.qepDisplay()
-        with self.tab2:
-            self.diskAccessVisual(self.query_outputB)
 
 
     # SQL query input section
@@ -114,6 +125,7 @@ class dbGUI:
         else:
             st.markdown("No data available!")
 
+
     # QEP display
     def qepDisplay(self):
         col1, col2 = st.columns(2)
@@ -128,13 +140,14 @@ class dbGUI:
                         NOTE: The numbers at the bottom of each tree node are for mapping purposes and do not indicate any order of execution.
                         ''')
             if self.qep != {}:
-                nodes = self.qep_viz(self.qep["Plan"])
+                nodes = self.qepViz(self.qep["Plan"])
                 #print(nodes)
-                self.qep_graph(nodes)
+                self.qepGraph(nodes)
                 st.graphviz_chart(self.graph)
 
+
     #Function used to extract out relevant information from the QEP JSON retrieved
-    def qep_viz(self, plan):
+    def qepViz(self, plan):
         operator = ""
         if "Join Type" in plan:
             operator += (str(plan["Join Type"]) + " ")
@@ -149,7 +162,7 @@ class dbGUI:
 
         if "Plans" in plan:
             for subPlan in plan["Plans"]:
-                subOutput = [self.qep_viz(subPlan)]
+                subOutput = [self.qepViz(subPlan)]
                 output += subOutput
         else:
             relation = [plan["Relation Name"]]
@@ -159,9 +172,10 @@ class dbGUI:
         
         #print(output)
         return output
-    
+
+
     #Function used for adding operators/relations as nodes to the QEP tree
-    def qep_graph(self, nodes):
+    def qepGraph(self, nodes):
         for node in nodes[1:]:
             if type(node) == list:
                 self.graph.edge(nodes[0], node[0])
@@ -170,12 +184,8 @@ class dbGUI:
         
         for node in nodes[1:]:
             if type(node) == list:
-                self.qep_graph(node)
+                self.qepGraph(node)
             
-
-
-    
-
 
 
 if __name__ == '__main__':
