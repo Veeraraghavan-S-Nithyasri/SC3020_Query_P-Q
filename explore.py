@@ -1,266 +1,251 @@
-# IMPORTING neccessary packages
 import psycopg2
-
-import sqlparse
-from sqlparse.sql import IdentifierList
-from sqlparse.sql import Identifier
-
-import os.path
-import re # Need for get_tabs() in ParseSQL
+import json
 import os
-import pandas
-import itertools
+import sqlparse
+from sqlparse.tokens import Keyword, DML
+from sqlparse.sql import Identifier, IdentifierList
 
-from sqlparse.tokens import Keyword
-from sqlparse.tokens import DML
-import re
 
-# CONNECTION TO DATABASE
-class Conn:
-    # constructor that extablishes connection to DB
-    def __init__ (self, hst = 'localhost', prt = 5432, db = 'TPC-H', uname = 'postgres', pwd = '1234'): 
-        self.db_conn = psycopg2.connect(host = hst, port = prt, database = db, user = uname, password = pwd)
-    # PS: We need to set up the DB locally on our comps with PGAdmin with the same usrname, pwd and fill in here
+def get_all_tables():
+    query = """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_type='BASE TABLE'
+            and table_schema='public'
+    """
+    conn = DBConn()
+    results = conn.execute_query(query)
+    return [result[0] for result in results]
+
+
+class DBConn:
+    def __init__(self, host="localhost", port=5432, database="tpch", user="postgres", password="password"):
+        self.conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
+        self.cursor = self.conn.cursor()
     
-    # for disconnection
-    def disconn(self):
-        self.db_conn.close()
-
-    # STATISTICS OF THE DATABASE
-    ''' Note: Learnt this technique of extracting statistical summaries using pandas from ChatGPT 
-        https://chat.openai.com/share/e33e40f4-bc7c-46a0-b38d-42268ef55be3 '''
+    def execute_query(self, query):
+        self.cursor.execute(query)
+        res = self.cursor.fetchall()
+        column_names = tuple([desc[0] for desc in self.cursor.description])
+        res = [column_names] + res
+        return res
     
-    # This function is to be used by GUI part as well as in Query to Query Template Conversion
-    def retreive_stats(self, query, db_conn):
-        # this function takes the query and database connection object as arguments
-        
-        db = pandas.read_sql_query(query, db_conn)
+    def gen_qep(self, query):
+        res = self.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
+        return res
 
-        stats = db.describe()
-        # save as a csv file
-        stats.to_csv('statistical_summaries.csv')
-        db_conn.close()
-        return db
-
-# PARSING OF THE SQL QUERY
+    def disconnect(self):
+        self.conn.close()
+    
 
 class ParseSQL:
-    # constructor
-    def __init__(self, q):
-        self.q = self.query(q) # clean query
-        self.sq = self.splitq() # split query
-        self.select_cols = self.get_attcol() # get attribute columns
-        self.tabs = self.get_tabs() # get tables
-        self.toks = sqlparse.parse(self.q)[0].tokens # token keywords
-
-    # UTILITY FUNCTIONS:
-    # 1. Take the raw SQL query as input and output a clean query
-    def query(self, sql_q):
-        final_q = ''
-
-        stmt = sqlparse.split(sql_q)[0]
-        parsed_q = sqlparse.format(stmt, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
-        split_p_q = parsed_q.splitlines()
+    def __init__(self, query):
+        self.query = self.clean_query(query)
+        self.tokens = sqlparse.parse(self.query)[0].tokens
+        #self.tables = self.extract_tables_from_query()
+        #self.columns = self.get_attcols()
         
-        for i in split_p_q:
-            final_q += ' {}'.format(i.strip())
+    def extract_all_tables(self):
+        stm = sqlparse.parse(self.query)
+        tables = []
+        for i in stm:
+            e = self.extractNested(i)
+            for j in e:
+                if isinstance(j, IdentifierList):
+                    for l in j.get_identifiers():
+                        l = l.value.replace('"', '')
+                        tables.append(l)
+                if isinstance(j, Identifier):
+                    l = j.value.replace('"', '')
+                    tables.append(l)
+        return tables
+    
+    def extract_toplevel_tables(self):
+        stm = sqlparse.parse(self.query)
+        tables = []
+        upper_lvl = False
+        for i in stm:
+            for j in i.tokens:
+                if upper_lvl:
+                    if isinstance(j, IdentifierList):
+                        for l in j.get_identifiers():
+                            k = l.get_name()
+                            tables.append(k)
+                    if isinstance(j, Identifier):
+                        k = j.get_name()
+                        tables.append(k)
+                if j.ttype is Keyword and j.value.upper() == "FROM":
+                    upper_lvl = True
+        return tables
 
-        return final_q
 
-    # 2. Get the split
-    def splitq(self):
-        stmt = sqlparse.split(self.q)
-        s = stmt[0]
-        parsed_q = sqlparse.format(s, reindent = True) # PS. need to decide if case must be UPPER, LOWER?
-        split_p_q = parsed_q.splitlines()
 
-        return split_p_q
+    def extractNested(self, statement):
+        upper_lvl = False
+        for i in statement.tokens:
+            if i.is_group:
+                for j in self.extractNested(i):
+                    yield j
+            if upper_lvl:
+                if self.isNested(i):
+                    for j in self.extractNested(i):
+                        yield j
+                elif i.ttype is Keyword and i.value.upper() in ["ORDER BY", "GROUP BY", "HAVING", "ORDER", "BY"]:
+                    upper_lvl = False
+                    StopIteration
+                else:
+                    yield i
+            if i.ttype is Keyword and i.value.upper() == "FROM":
+                upper_lvl = True
+    
+    def clean_query(self, sql):
+        statements = sqlparse.split(sql)
+        statement = statements[0]
+        cleaned = sqlparse.format(statement, reindent=True, keyword_case='upper')
+        cleaned = cleaned.splitlines()
 
-    def get_all_attribs(self, tabs):
-        ans = []
-        for tab in tabs:
-            with open(f"tables/{tab}.txt") as f:
-                cols = f.read().replace("\n", ",")
-                ans += cols.split(",")
-                f.close()
-        return [i for i in ans if i != ""]
-    # 3. Retreive attribute columns
-    def get_attcol(self):
+        cleaned_query = ''
+        for item in cleaned:
+            cleaned_query += ' {}'.format(item.strip())
+        return cleaned_query
+    
+
+    def isNested(self, statement):
+        '''
+            checks whehter the parsed statement of a SQL query is nested (subqueries) or not
+
+        '''
+        if not statement.is_group:
+            return False
         
-        i = self.q.find("SELECT")
-        j = self.q.find("FROM")
-        cols = self.q[i+6:j].replace(" ", "")
-        cols = cols.split(",")
-        ans = []
-        for col in cols:
-            if col == '*':
-                i = self.q.find("WHERE")
-                tabs = self.q[j+4:i].replace(" ", "")
-                ans += self.get_all_attribs(tabs.split(","))
-                return ans
-            
-            elif col.find(".") < len(col):
-                ans.append(col[col.find(".")+1:])
-            else:
-                ans.append(col)
-        return ans
-    # 4. Get the tables
+        for st in statement.tokens:
+            if st.ttype is DML and (st.value.upper() == "SELECT" or st.value.upper() == "select"):
+                return True
+        return False
+        
+    def filter_columns(self, table_name):
+        query = f"""
+            SELECT 
+                column_name, data_type
+            FROM 
+                information_schema.columns
+            WHERE 
+                table_name = '{table_name}'
+                AND data_type IN (
+                    'bigint', 'integer',
+                    'double precision', 'real',
+                    'character', 'character varying', 'text',
+                    'date', 'timestamp without time zome', 'timestamp with time zone'
+                )
+        """
+        conn = DBConn()
+        res = conn.execute_query(query)
+        dtype_list = []
+        for column_name, dtype in res:
+            dtype_list.append({
+                "col": column_name,
+                "dtype": dtype
+            })
+        result_list = []
 
-    def get_tabs(self):
-        tabs_arr = []
-        stmt = list(sqlparse.parse(self.q))
-        for x in stmt:
-            s_type = stmt.get_type
-            if s_type != 'UNKNOWN':
-                from_token = self.get_FROM(stmt)
-
-                # this piece of code gets the indentifiers in the table
-                for x in from_token:
-                    
-                    if isinstance(x, IdentifierList):
-                        for ID in x.get_identifiers():
-                            ans = ID.value.replace('"', '').lower() 
-                            yield ans
-
-                    # if not an instance of IdentifierList but is of Indentifier
-                    elif isinstance(x, Identifier):
-                        
-                        ans = x.ans.replace('"', '').lower() 
-                        yield ans
-                tabs_arr.append(set(list(ans)))
+        for item in dtype_list:
+            if item['dtype'] in ['character', 'character varying', 'text']:
+                query = f"""
+                    SELECT count(*)
+                    FROM {table_name}
+                    WHERE {item['column_name']} ~ '^.*[^A-Za-z0-9 .-].*$'
+                """
                 
-                final_tabs_arr = []
-                temp = list(itertools.chain(*tabs_arr))
-                for t in temp:
-                    check = re.compile('[@_#^&*()<>!?/\|%$}{~:]').search(t)
-                    if  check is None:
-                        tab = t.split(' ') 
-                        final_tabs_arr.append(tabs[0])
-                        # to list
-                final_tabs_arr = list(set(final_tabs_arr))
-                return final_tabs_arr                    
-
-         # EXTRA UTIL FN
-
-    def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
-            flag_from = False
-            for x in parsed.tokens:
-                if x.is_group:
-                    for t in self.get_FROM(x):
-                        yield t
-                # if a 'from' is detected
-                if flag_from:
-                    if self.bool_select_nested(x): # this is to check if it's a select within a select
-                        
-                        for t in self.get_FROM(x):
-                            yield t
-                            
-                    elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
-                        flag_from = False
-                        StopIteration
-                    else:
-                        yield x
-                if x.ttype is Keyword and x.value.upper() == 'FROM':
-                    flag_from = True
-
+                res2 = conn.execute_query(query)
+                non_alpha = res2[0][0]
+                if non_alpha != 0:
+                    continue
+                
+            result_list.append(item)
         
-   
+        query = f"""
+            SELECT
+                kcu.column_name
+            FROM 
+                information_schema.table_constraints AS tc 
+                JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name={table_name};
+        """
+        res3 = conn.execute_query(query)
+        fk = []
+        for item in res3:
+            fk.append(item[0])
+        conn.disconnect()
 
-    def bool_select_nested(self, parsed): # util fn for get_FROM
-            if not parsed.is_group:
-                return 0
-            for x in parsed.tokens:
-                if x.ttype is DML and x.value.upper() == 'SELECT':
-                    return 1
-            return 0
+        filtered_attribs = result_list - fk
+        return filtered_attribs
         
-# EXTRACTION OF ATTRIBUTES
-    '''Note: We need to create a folder called tables and store the attribute/column names
-    of the tables given in requirements as a text file'''
+    def get_columns(self, table_name):
+        if os.path.exists(f"tables/{table_name}.txt"):
+            with open(f"table{table_name}", "r") as f:
+                attribs = f.read()
+                return attribs.split("\n")
+        attribs = self.filter_columns(table_name)
+        with open(f"tables/{table_name}.txt", 'w') as f:
+            f.writelines([a+"\n" for a in attribs])
+            f.close()
+        return attribs
+        #'EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + 
 
-class Extract:
+
     
-    # constructor to initialize table name and table attributes
-    def __init__(self, tab):
-        self.tab = tab
-        self.atts = None
+def gen_qep(query):
+    conn = DBConn()
+    res = conn.execute_query('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON ) ' + query)
+    return res
 
-    def retreive_text_read(self):
-        cols = []
-        with open('tables/{}.txt'.format(self.table_name), 'r') as textfile:
-            for x in textfile:
-		# need to get rid of \n break
-                cursor = x[:-1]
-                cols.append(cursor)
-        return cols
 
-    def dtype(self):
-        # retreives the datatypes of the attributes of the relation and store as a list/dict
+# adds ctid with block number column to sql query
+def queryDiskBlocks(query):
+    parsed = ParseSQL(query)
+    stm = sqlparse.parse(query)
+    tokens = parsed.tokens
 
-        sql = """SELECT column_name, data_type FROM information_schema.columns WHERE table_name = {tab} AND data_type 
-        IN ('integer', 'double precision', 'real', 'character', 'character varying', 'text', 'date', 'bigint', 'timestamp 
-        with time zone', 'timestamp without time zone')"""
+    querySplitA = ""
+    querySplitB = ""
 
-        sql = sql.format(tab = self.tab)
+    select_end = False
 
-        # Here need to insert code that will actually connect to db and execute the query and do extraction ???
-        con = db_conn.DBConnection()
-        ans = db_conn.execute(q)
-        con.close()
-
-        ans_arr = []
-        for att, datype in ans:
-            ans_arr.append({"column_name": att, "data_type": datype,})
-        
-        # write in the ans_arr into the attributes
-        self.atts = ans_arr
-    
-    
-    
-# CONVERSION OF SQL QUERY
-
-# For Brackets '(' and ')' in the queries
-def bracket(str):
-    # Get the string containing the key:value pair bracket_level : the string's content
-    arr = []
-    for x, token in enumerate(str): # token is extracting the brackets or paranthesis
-        
-        # Opening bracket
-        if token == '(':
-            arr.append(x)
-        
-        # Closing Bracket
-        elif token == ')':
-            first = arr.pop()
-            arr_len = len(arr)
-            yield (arr_len, str[first + 1: x]) # returns the value
-
-'''Needed in the scenario where there is a subquery
-def query_to_queryTemplate(q):
-    converts a SQL query into its corresponding template
-    
-    q_parsed = ParseSQL(q)
-    temp = []'''
-
- 
-def nested_to_temp(nested_q):
-    tok = nested_q
-    # converts a nested query into its template
-    for j in list(bracket(nested_q)):
-        
-        c = j[1]
-        if 'select' in c.lower():
+    # splits the SELECT clause from the rest of the SQL query. The entire SELECT clause is stored in a single string.
+    for token in tokens:
+        #print(token)
+        if token.match(sqlparse.tokens.Keyword, ["from", "FROM"]):
+            select_end = True
+        if not select_end:
+            querySplitA += str(token)
+        else:
+            querySplitB += str(token)
             
-            buf = ParseSQL(c)
-        tok = buf
+
+    print(querySplitA)
+    print(querySplitB)
+
+    # extracts tables used in the SQL query. nested queries are not considered.
+    tableNames = parsed.extract_toplevel_tables()
+    print(tableNames)
+
+
+
+
+    # modifies the SELECT clause from earlier to also select the block numbers from the ctid attribute.
+    for item in tableNames:
+        print(item)
+        querySplitA += ", (" + item + ".ctid::text::point)[0]::bigint as " + item + "_ctid_blocknumber "
+
     
-    return tok
-
-
-
-
-
-
-
+    newquery = querySplitA + querySplitB
+    print(newquery)
+    
+    return newquery
 
 

@@ -1,7 +1,7 @@
 import streamlit as st
 import graphviz
-from new_explore import DBConn
-from new_explore import queryDiskBlocks
+from explore import DBConn
+from explore import queryDiskBlocks
 import pandas as pd
 import sys
 
