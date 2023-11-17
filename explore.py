@@ -141,6 +141,28 @@ class ParseSQL:
                 return final_tabs_arr                    
 
          # EXTRA UTIL FN
+
+    def get_FROM(self, parsed): # used within get_tabs() and takes a parsed SQL query as argument
+            flag_from = False
+            for x in parsed.tokens:
+                if x.is_group:
+                    for t in self.get_FROM(x):
+                        yield t
+                # if a 'from' is detected
+                if flag_from:
+                    if self.bool_select_nested(x): # this is to check if it's a select within a select
+                        
+                        for t in self.get_FROM(x):
+                            yield t
+                            
+                    elif x.ttype is Keyword and x.value.upper() in ['ORDER', 'GROUP', 'BY', 'HAVING', 'GROUP BY']:
+                        flag_from = False
+                        StopIteration
+                    else:
+                        yield x
+                if x.ttype is Keyword and x.value.upper() == 'FROM':
+                    flag_from = True
+
         
    
 
