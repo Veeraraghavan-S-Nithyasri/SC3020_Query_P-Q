@@ -222,7 +222,11 @@ def queryDiskBlocks(query):
         if not select_end:
             querySplitA += str(token)
         else:
-            querySplitBstr.append(str(token))
+            if isinstance(token, IdentifierList):
+                for idfr in token:
+                    querySplitBstr.append(str(idfr))
+            else:
+                querySplitBstr.append(str(token))
             
 
     print(querySplitA)
