@@ -4,4 +4,3 @@ pandas
 psycopg2
 psycopg2-binary
 sqlparse
-subprocess
